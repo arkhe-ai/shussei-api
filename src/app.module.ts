@@ -1,10 +1,15 @@
 import { Module } from '@nestjs/common';
 import { HealthController } from './health/health.controller';
 import { DatabaseModule } from './database/database.module';
+import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './auth/auth.module';
+import { ChannelsModule } from './channels/channels.module';
+import { ChatModule } from './chat/chat.module';
+import { PresenceModule } from './presence/presence.module';
+import { RtcModule } from './rtc/rtc.module';
 
 @Module({
-  imports: [DatabaseModule, AuthModule],
+  imports: [DatabaseModule, RedisModule, AuthModule, ChannelsModule, ChatModule, PresenceModule, RtcModule],
   controllers: [HealthController],
 })
 export class AppModule {}
