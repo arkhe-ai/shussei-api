@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  googleId  String   @unique
+  email     String   @unique
+  name      String
+  avatarUrl String?
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model AllowedUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  invitedBy String?
+  createdAt DateTime @default(now())
+
+  @@map("allowed_users")
+}
+
+model Channel {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // 'text' or 'voice'
+  position  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("channels")
+}
+
+model ChannelPresence {
+  userId    String
+  channelId String
+  joinedAt  DateTime @default(now())
+
+  @@id([userId, channelId])
+  @@map("channel_presences")
+}
