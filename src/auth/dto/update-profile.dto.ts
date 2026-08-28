@@ -3,6 +3,7 @@ import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'cl
 import { ALLOWED_SPRITE_IDS } from '../../common/types/session-user';
 
 export class UpdateProfileDto {
+  @IsOptional()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @IsNotEmpty()
