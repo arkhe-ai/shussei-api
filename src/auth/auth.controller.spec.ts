@@ -3,6 +3,7 @@ import { AuthController } from './auth.controller';
 describe('AuthController', () => {
   const auth = {
     updateProfileName: jest.fn(),
+    updateProfile: jest.fn(),
     getSessionCookieName: jest.fn().mockReturnValue('session'),
     getSessionCookieOptions: jest.fn().mockReturnValue({ httpOnly: true }),
     getFrontendUrl: jest.fn().mockReturnValue('http://localhost:3000'),
@@ -13,12 +14,12 @@ describe('AuthController', () => {
 
   it('updates authenticated user profile', async () => {
     const user = { id: 'user-1', email: 'person@example.com', name: 'New Name', avatarUrl: null };
-    auth.updateProfileName.mockResolvedValue(user);
+    auth.updateProfile.mockResolvedValue(user);
 
     await expect(
       controller.updateMe({ user: { id: 'user-1' } } as any, { name: 'New Name' }),
     ).resolves.toEqual({ user });
-    expect(auth.updateProfileName).toHaveBeenCalledWith('user-1', 'New Name');
+    expect(auth.updateProfile).toHaveBeenCalledWith('user-1', { name: 'New Name' });
   });
 
   it('clears session cookie and redirects on logout', () => {

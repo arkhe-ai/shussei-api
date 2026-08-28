@@ -42,6 +42,7 @@ describe('AuthService', () => {
       email: 'person@example.com',
       name: 'Custom Name',
       avatarUrl: 'https://avatar',
+      spriteId: null,
     });
     expect(prisma.user.upsert).toHaveBeenCalledWith({
       where: { email: 'person@example.com' },
@@ -63,6 +64,7 @@ describe('AuthService', () => {
       email: 'person@example.com',
       name: 'New Name',
       avatarUrl: null,
+      spriteId: null,
     });
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: 'user-1' },

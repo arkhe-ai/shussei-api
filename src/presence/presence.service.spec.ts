@@ -14,8 +14,13 @@ describe('PresenceService', () => {
   const redisService = {
     getClient: jest.fn().mockReturnValue(redis),
   } as any;
+  const authService = {
+    listUsersByIds: jest.fn().mockResolvedValue([
+      { id: 'user-1', spriteId: 'gorro' },
+    ]),
+  } as any;
 
-  const service = new PresenceService(redisService);
+  const service = new PresenceService(redisService, authService);
 
   it('tracks online users and channel occupancy', async () => {
     await service.markOnline('user-1');
@@ -24,6 +29,7 @@ describe('PresenceService', () => {
     await expect(service.snapshot()).resolves.toEqual({
       onlineUserIds: ['user-1'],
       channelOccupancy: { 'voice-1': ['user-1'] },
+      userSprites: { 'user-1': 'gorro' },
     });
   });
 

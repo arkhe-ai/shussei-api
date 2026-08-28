@@ -3,6 +3,8 @@ import type { Request } from 'express';
 import { PrismaService } from '../database/prisma.service';
 import { SessionUser } from '../common/types/session-user';
 
+type ProfileUpdate = { name?: string; spriteId?: string | null };
+
 const jwt = require('jsonwebtoken');
 
 export type GoogleProfile = {
@@ -16,78 +18,65 @@ export type GoogleProfile = {
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private toSessionUser(user: {
+    id: string;
+    email: string;
+    name: string;
+    avatarUrl: string | null;
+    spriteId?: string | null;
+  }): SessionUser {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      spriteId: user.spriteId ?? null,
+    };
+  }
+
   async upsertAllowedGoogleUser(profile: GoogleProfile): Promise<SessionUser> {
-    const allowed = await this.prisma.allowedUser.findUnique({
-      where: { email: profile.email },
-    });
-    if (!allowed) {
-      throw new Error('access_denied');
-    }
+    const allowed = await this.prisma.allowedUser.findUnique({ where: { email: profile.email } });
+    if (!allowed) throw new Error('access_denied');
 
     const user = await this.prisma.user.upsert({
       where: { email: profile.email },
-      update: {
-        googleId: profile.sub,
-        avatarUrl: profile.picture,
-        status: 'active',
-      },
+      update: { googleId: profile.sub, avatarUrl: profile.picture, status: 'active' },
       create: {
         googleId: profile.sub,
         email: profile.email,
         name: profile.name,
         avatarUrl: profile.picture,
-        status: 'active',
       },
     });
 
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      avatarUrl: user.avatarUrl,
-    };
+    return this.toSessionUser(user);
   }
 
   async updateProfileName(userId: string, name: string): Promise<SessionUser> {
-    const user = await this.prisma.user.update({
-      where: { id: userId },
-      data: { name: name.trim() },
-    });
+    return this.updateProfile(userId, { name });
+  }
 
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      avatarUrl: user.avatarUrl,
-    };
+  async updateProfile(userId: string, input: ProfileUpdate): Promise<SessionUser> {
+    const data: ProfileUpdate = { ...input };
+    if (data.name !== undefined) data.name = data.name.trim();
+    const user = await this.prisma.user.update({ where: { id: userId }, data });
+    return this.toSessionUser(user);
   }
 
   async getUserById(userId: string): Promise<SessionUser | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-    if (!user) return null;
-
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      avatarUrl: user.avatarUrl,
-    };
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    return user ? this.toSessionUser(user) : null;
   }
 
   async listUsers(): Promise<SessionUser[]> {
-    const users = await this.prisma.user.findMany({
-      where: { status: 'active' },
-      orderBy: { name: 'asc' },
-    });
+    const users = await this.prisma.user.findMany({ where: { status: 'active' }, orderBy: { name: 'asc' } });
+    return users.map((user: any) => this.toSessionUser(user));
+  }
 
-    return users.map((user: any) => ({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      avatarUrl: user.avatarUrl,
-    }));
+  async listUsersByIds(userIds: string[]): Promise<SessionUser[]> {
+    if (userIds.length === 0) return [];
+    const users = await this.prisma.user.findMany({ where: { id: { in: userIds } } });
+    return users.map((user: any) => this.toSessionUser(user));
   }
 
   getSessionCookieName(): string {
@@ -103,20 +92,10 @@ export class AuthService {
   }
 
   async getSessionUserFromToken(token?: string): Promise<SessionUser | null> {
-    if (!token) {
-      return null;
-    }
-
+    if (!token) return null;
     try {
-      const payload = jwt.verify(token, process.env.SESSION_SECRET ?? 'change-me-session') as {
-        sub?: string;
-      };
-
-      if (!payload?.sub) {
-        return null;
-      }
-
-      return this.getUserById(payload.sub);
+      const payload = jwt.verify(token, process.env.SESSION_SECRET ?? 'change-me-session') as { sub?: string };
+      return payload?.sub ? this.getUserById(payload.sub) : null;
     } catch {
       return null;
     }
@@ -128,7 +107,6 @@ export class AuthService {
 
   getSessionCookieOptions() {
     const cookieDomain = process.env.COOKIE_DOMAIN;
-
     return {
       httpOnly: true,
       sameSite: 'lax' as const,
@@ -139,19 +117,8 @@ export class AuthService {
     };
   }
 
-  getFrontendUrl(): string {
-    return process.env.FRONTEND_URL ?? 'http://localhost:3000';
-  }
-
-  buildSuccessRedirect(): string {
-    return `${this.getFrontendUrl()}/channels`;
-  }
-
-  buildAccessDeniedRedirect(): string {
-    return `${this.getFrontendUrl()}/access-denied`;
-  }
-
-  buildOauthFailureRedirect(): string {
-    return `${this.getFrontendUrl()}/login?error=oauth_failed`;
-  }
+  getFrontendUrl(): string { return process.env.FRONTEND_URL ?? 'http://localhost:3000'; }
+  buildSuccessRedirect(): string { return `${this.getFrontendUrl()}/channels`; }
+  buildAccessDeniedRedirect(): string { return `${this.getFrontendUrl()}/access-denied`; }
+  buildOauthFailureRedirect(): string { return `${this.getFrontendUrl()}/login?error=oauth_failed`; }
 }

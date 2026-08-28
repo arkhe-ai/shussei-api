@@ -61,7 +61,7 @@ export class AuthController {
     @Req() req: Request & { user?: SessionUser },
     @Body() body: UpdateProfileDto,
   ) {
-    const user = await this.authService.updateProfileName(req.user!.id, body.name);
+    const user = await this.authService.updateProfile(req.user!.id, body);
     return { user };
   }
 

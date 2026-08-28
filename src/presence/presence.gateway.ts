@@ -12,6 +12,7 @@ import { Server, Socket } from 'socket.io';
 import { AuthService } from '../auth/auth.service';
 import { ChatService } from '../chat/chat.service';
 import { PresenceService } from './presence.service';
+import { ALLOWED_SPRITE_IDS } from '../common/types/session-user';
 
 function sessionTokenFromSocket(client: Socket, cookieName: string): string | undefined {
   const cookieHeader = client.handshake.headers.cookie;
@@ -86,6 +87,18 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     await this.presenceService.leaveVoiceChannel(userId, payload.channelId);
     this.server.emit('presence.changed', { userId, status: 'online', channelId: null });
+  }
+
+  @SubscribeMessage('presence.sprite.changed')
+  async changeSprite(@ConnectedSocket() client: Socket, @MessageBody() payload: { spriteId: string | null }) {
+    const userId = client.data.userId as string | undefined;
+    if (!userId) throw new WsException('authentication_required');
+    if (payload.spriteId !== null && !ALLOWED_SPRITE_IDS.includes(payload.spriteId as any)) {
+      throw new WsException('invalid_sprite_id');
+    }
+
+    await this.authService.updateProfile(userId, { spriteId: payload.spriteId });
+    this.server.emit('presence.sprite.changed', { userId, spriteId: payload.spriteId });
   }
 
   @SubscribeMessage('chat.send')

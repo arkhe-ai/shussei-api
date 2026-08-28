@@ -15,6 +15,7 @@ describe('PresenceGateway', () => {
     getSessionCookieName: jest.fn().mockReturnValue('session'),
     getSessionUserFromToken: jest.fn(),
     getUserById: jest.fn(),
+    updateProfile: jest.fn(),
   } as any;
   const gateway = new PresenceGateway(presence, chat, auth);
   const server = { emit: jest.fn() };
@@ -60,6 +61,25 @@ describe('PresenceGateway', () => {
     expect(server.emit).toHaveBeenCalledWith('presence.changed', {
       userId: 'user-1', status: 'online', channelId: null,
     });
+  });
+
+  it('persists and broadcasts sprite changes', async () => {
+    client.data.userId = 'user-1';
+
+    await gateway.changeSprite(client, { spriteId: 'gorro' });
+
+    expect(auth.updateProfile).toHaveBeenCalledWith('user-1', { spriteId: 'gorro' });
+    expect(server.emit).toHaveBeenCalledWith('presence.sprite.changed', {
+      userId: 'user-1', spriteId: 'gorro',
+    });
+  });
+
+  it('rejects invalid sprite changes', async () => {
+    client.data.userId = 'user-1';
+
+    await expect(gateway.changeSprite(client, { spriteId: 'unknown' })).rejects.toThrow(
+      new WsException('invalid_sprite_id'),
+    );
   });
 
   it('uses authenticated user name in chat message', async () => {

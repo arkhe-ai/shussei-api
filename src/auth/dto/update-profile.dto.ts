@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { ALLOWED_SPRITE_IDS } from '../../common/types/session-user';
 
 export class UpdateProfileDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
@@ -7,5 +8,9 @@ export class UpdateProfileDto {
   @IsNotEmpty()
   @MinLength(2)
   @MaxLength(40)
-  name!: string;
+  name?: string;
+
+  @IsOptional()
+  @IsIn(ALLOWED_SPRITE_IDS)
+  spriteId?: string | null;
 }
