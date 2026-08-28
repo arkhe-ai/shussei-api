@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { AccessToken } from 'livekit-server-sdk';
 import { SessionUser } from '../common/types/session-user';
 
 export type CreateVoiceTokenInput = {
@@ -8,17 +9,23 @@ export type CreateVoiceTokenInput = {
 
 @Injectable()
 export class RtcService {
-  constructor(private readonly livekit: any) {}
+  constructor(
+    private readonly livekit: { apiKey: string; apiSecret: string; wsUrl: string },
+  ) {}
 
   async createVoiceToken(input: CreateVoiceTokenInput) {
     const roomName = `voice-channel-${input.channelId}`;
-    const token = this.livekit.createAccessToken();
+    const token = new AccessToken(this.livekit.apiKey, this.livekit.apiSecret, {
+      identity: input.user.id,
+    });
+
     token.addGrant({
       roomJoin: true,
       room: roomName,
       canPublish: true,
       canSubscribe: true,
     });
+
     const jwt = await token.toJwt();
 
     return {

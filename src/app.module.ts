@@ -7,9 +7,10 @@ import { ChannelsModule } from './channels/channels.module';
 import { ChatModule } from './chat/chat.module';
 import { PresenceModule } from './presence/presence.module';
 import { RtcModule } from './rtc/rtc.module';
+import { UsersController } from './users.controller';
 
 @Module({
   imports: [DatabaseModule, RedisModule, AuthModule, ChannelsModule, ChatModule, PresenceModule, RtcModule],
-  controllers: [HealthController],
+  controllers: [HealthController, UsersController],
 })
 export class AppModule {}

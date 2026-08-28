@@ -63,6 +63,20 @@ export class AuthService {
     };
   }
 
+  async listUsers(): Promise<SessionUser[]> {
+    const users = await this.prisma.user.findMany({
+      where: { status: 'active' },
+      orderBy: { name: 'asc' },
+    });
+
+    return users.map((user: any) => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+    }));
+  }
+
   getSessionCookieName(): string {
     return process.env.SESSION_COOKIE_NAME ?? 'shussei_session';
   }
