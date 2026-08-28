@@ -60,6 +60,34 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
     this.server.emit('presence.changed', { userId: user.id, status: 'online', channelId: null });
   }
 
+  @SubscribeMessage('voice.join')
+  async joinVoice(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { channelId: string },
+  ) {
+    const userId = client.data.userId as string | undefined;
+    if (!userId) throw new WsException('authentication_required');
+
+    await this.presenceService.joinVoiceChannel(userId, payload.channelId);
+    this.server.emit('presence.changed', {
+      userId,
+      status: 'online',
+      channelId: payload.channelId,
+    });
+  }
+
+  @SubscribeMessage('voice.leave')
+  async leaveVoice(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { channelId: string },
+  ) {
+    const userId = client.data.userId as string | undefined;
+    if (!userId) throw new WsException('authentication_required');
+
+    await this.presenceService.leaveVoiceChannel(userId, payload.channelId);
+    this.server.emit('presence.changed', { userId, status: 'online', channelId: null });
+  }
+
   @SubscribeMessage('chat.send')
   async sendChat(@ConnectedSocket() client: Socket, @MessageBody() payload: { channelId: string; body: string }) {
     const userId = client.data.userId as string | undefined;

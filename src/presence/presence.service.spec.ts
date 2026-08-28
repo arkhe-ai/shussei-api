@@ -6,6 +6,8 @@ describe('PresenceService', () => {
     srem: jest.fn().mockResolvedValue(1),
     smembers: jest.fn().mockResolvedValue(['user-1']),
     hset: jest.fn().mockResolvedValue(1),
+    hget: jest.fn().mockResolvedValue(null),
+    hdel: jest.fn().mockResolvedValue(1),
     hgetall: jest.fn().mockResolvedValue({ 'voice-1': JSON.stringify(['user-1']) }),
   } as any;
 
@@ -23,5 +25,18 @@ describe('PresenceService', () => {
       onlineUserIds: ['user-1'],
       channelOccupancy: { 'voice-1': ['user-1'] },
     });
+  });
+
+  it('keeps multiple users in one voice channel', async () => {
+    redis.hget.mockResolvedValueOnce(null).mockResolvedValueOnce(JSON.stringify(['user-1']));
+
+    await service.joinVoiceChannel('user-1', 'voice-1');
+    await service.joinVoiceChannel('user-2', 'voice-1');
+
+    expect(redis.hset).toHaveBeenLastCalledWith(
+      'presence:channels',
+      'voice-1',
+      JSON.stringify(['user-1', 'user-2']),
+    );
   });
 });

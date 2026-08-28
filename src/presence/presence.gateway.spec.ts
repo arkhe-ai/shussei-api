@@ -6,6 +6,8 @@ describe('PresenceGateway', () => {
   const presence = {
     markOnline: jest.fn(),
     markOffline: jest.fn(),
+    joinVoiceChannel: jest.fn(),
+    leaveVoiceChannel: jest.fn(),
     snapshot: jest.fn(),
   } as any;
   const chat = { pushMessage: jest.fn() } as any;
@@ -36,6 +38,28 @@ describe('PresenceGateway', () => {
     expect(auth.getSessionUserFromToken).toHaveBeenCalledWith('token-1');
     expect(client.data.userId).toBe('user-1');
     expect(presence.markOnline).toHaveBeenCalledWith('user-1');
+  });
+
+  it('broadcasts voice channel join to every socket', async () => {
+    client.data.userId = 'user-1';
+
+    await gateway.joinVoice(client, { channelId: 'voice-1' });
+
+    expect(presence.joinVoiceChannel).toHaveBeenCalledWith('user-1', 'voice-1');
+    expect(server.emit).toHaveBeenCalledWith('presence.changed', {
+      userId: 'user-1', status: 'online', channelId: 'voice-1',
+    });
+  });
+
+  it('removes user from voice channel and broadcasts leave', async () => {
+    client.data.userId = 'user-1';
+
+    await gateway.leaveVoice(client, { channelId: 'voice-1' });
+
+    expect(presence.leaveVoiceChannel).toHaveBeenCalledWith('user-1', 'voice-1');
+    expect(server.emit).toHaveBeenCalledWith('presence.changed', {
+      userId: 'user-1', status: 'online', channelId: null,
+    });
   });
 
   it('uses authenticated user name in chat message', async () => {
