@@ -17,6 +17,7 @@ export class RtcService {
     const roomName = `voice-channel-${input.channelId}`;
     const token = new AccessToken(this.livekit.apiKey, this.livekit.apiSecret, {
       identity: input.user.id,
+      name: input.user.name,
     });
 
     token.addGrant({

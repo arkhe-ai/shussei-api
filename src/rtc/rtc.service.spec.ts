@@ -18,5 +18,7 @@ describe('RtcService', () => {
     expect(result.roomName).toBe('voice-channel-voice-general');
     expect(result.wsUrl).toBe('wss://rtc.example.com');
     expect(result.token.split('.')).toHaveLength(3);
+    const claims = JSON.parse(Buffer.from(result.token.split('.')[1], 'base64url').toString());
+    expect(claims.name).toBe('User');
   });
 });
