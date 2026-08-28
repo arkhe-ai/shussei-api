@@ -3,7 +3,7 @@ import { AuthService } from './auth.service';
 describe('AuthService', () => {
   const prisma = {
     allowedUser: { findUnique: jest.fn() },
-    user: { upsert: jest.fn() },
+    user: { upsert: jest.fn(), update: jest.fn() },
   } as any;
 
   const service = new AuthService(prisma);
@@ -26,7 +26,7 @@ describe('AuthService', () => {
     prisma.user.upsert.mockResolvedValue({
       id: 'user-1',
       email: 'person@example.com',
-      name: 'Person',
+      name: 'Custom Name',
       avatarUrl: 'https://avatar',
     });
 
@@ -40,8 +40,33 @@ describe('AuthService', () => {
     ).resolves.toEqual({
       id: 'user-1',
       email: 'person@example.com',
-      name: 'Person',
+      name: 'Custom Name',
       avatarUrl: 'https://avatar',
+    });
+    expect(prisma.user.upsert).toHaveBeenCalledWith({
+      where: { email: 'person@example.com' },
+      update: { googleId: 'google-2', avatarUrl: 'https://avatar', status: 'active' },
+      create: expect.objectContaining({ name: 'Person' }),
+    });
+  });
+
+  it('updates and trims current user name', async () => {
+    prisma.user.update.mockResolvedValue({
+      id: 'user-1',
+      email: 'person@example.com',
+      name: 'New Name',
+      avatarUrl: null,
+    });
+
+    await expect(service.updateProfileName('user-1', ' New Name ')).resolves.toEqual({
+      id: 'user-1',
+      email: 'person@example.com',
+      name: 'New Name',
+      avatarUrl: null,
+    });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { name: 'New Name' },
     });
   });
 });

@@ -1,8 +1,10 @@
-import { Controller, Get, Next, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Next, Patch, Req, Res, UseGuards } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import passport from 'passport';
 import { AuthService } from './auth.service';
 import { SessionUser } from '../common/types/session-user';
+import { JwtSessionGuard } from './jwt-session.guard';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Controller('/api/v1/auth')
 export class AuthController {
@@ -51,6 +53,16 @@ export class AuthController {
       this.authService.getSessionCookieOptions(),
     );
     res.redirect(`${this.authService.getFrontendUrl()}/login`);
+  }
+
+  @Patch('/me')
+  @UseGuards(JwtSessionGuard)
+  async updateMe(
+    @Req() req: Request & { user?: SessionUser },
+    @Body() body: UpdateProfileDto,
+  ) {
+    const user = await this.authService.updateProfileName(req.user!.id, body.name);
+    return { user };
   }
 
   @Get('/me')

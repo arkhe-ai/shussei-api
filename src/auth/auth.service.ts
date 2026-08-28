@@ -28,7 +28,6 @@ export class AuthService {
       where: { email: profile.email },
       update: {
         googleId: profile.sub,
-        name: profile.name,
         avatarUrl: profile.picture,
         status: 'active',
       },
@@ -39,6 +38,20 @@ export class AuthService {
         avatarUrl: profile.picture,
         status: 'active',
       },
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+    };
+  }
+
+  async updateProfileName(userId: string, name: string): Promise<SessionUser> {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { name: name.trim() },
     });
 
     return {
