@@ -66,11 +66,11 @@ describe('PresenceGateway', () => {
   it('persists and broadcasts sprite changes', async () => {
     client.data.userId = 'user-1';
 
-    await gateway.changeSprite(client, { spriteId: 'gorro' });
+    await gateway.changeSprite(client, { spriteId: 'dev' });
 
-    expect(auth.updateProfile).toHaveBeenCalledWith('user-1', { spriteId: 'gorro' });
+    expect(auth.updateProfile).toHaveBeenCalledWith('user-1', { spriteId: 'dev' });
     expect(server.emit).toHaveBeenCalledWith('presence.sprite.changed', {
-      userId: 'user-1', spriteId: 'gorro',
+      userId: 'user-1', spriteId: 'dev',
     });
   });
 

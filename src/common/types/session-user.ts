@@ -1,4 +1,9 @@
-export const ALLOWED_SPRITE_IDS = ['curto', 'chapeu', 'moicano', 'longo', 'careca', 'gorro'] as const;
+export const ALLOWED_SPRITE_IDS = [
+  'aventureiro', 'aventureira', 'dev', 'mago', 'cavaleiro', 'arqueiro',
+  'gato', 'cachorro', 'raposa', 'sapo', 'robo', 'pato',
+  'alienigena', 'dinossauro', 'feiticeiro', 'panda', 'panda-vermelho', 'androide',
+  'paladino', 'bruxa', 'cacador', 'clerigo', 'diabinho', 'mago-do-gelo',
+] as const;
 export type SpriteId = (typeof ALLOWED_SPRITE_IDS)[number];
 
 export type SessionUser = {
