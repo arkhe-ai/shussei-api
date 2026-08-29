@@ -35,5 +35,12 @@ describe('App health (e2e)', () => {
       .expect(302)
       .expect('Location', 'http://localhost:3000/login');
   });
+
+  it('protects file and folder endpoints with the session guard', async () => {
+    await request(app.getHttpServer()).get('/api/v1/channels/channel-1/folders').expect(401);
+    await request(app.getHttpServer()).get('/api/v1/channels/channel-1/files').expect(401);
+    await request(app.getHttpServer()).get('/api/v1/files/550e8400-e29b-41d4-a716-446655440000').expect(401);
+    await request(app.getHttpServer()).post('/api/v1/channels/channel-1/files').expect(401);
+  });
 });
 
