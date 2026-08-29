@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { StorageService } from '../storage/storage.service';
+import { FileCleanupService } from '../cleanup/file-cleanup.service';
 import { PrismaService } from '../database/prisma.service';
 import { FilesAccessService } from './files-access.service';
 import { CreateFolderDto } from './dto/create-folder.dto';
@@ -18,6 +19,7 @@ export class FilesService {
     private readonly prisma: PrismaService,
     private readonly access: FilesAccessService,
     private readonly storage: StorageService,
+    private readonly cleanup: FileCleanupService,
   ) {}
 
   async listContents(channelId: string, parentId: string | null) {
@@ -132,6 +134,7 @@ export class FilesService {
   async deleteFile(fileId: string): Promise<void> {
     await this.getFile(fileId);
     await this.prisma.storedFile.delete({ where: { id: fileId } });
+    await this.cleanup.removeFiles([fileId]);
   }
 
   async getFolder(folderId: string) {
@@ -197,7 +200,19 @@ export class FilesService {
 
   async deleteFolder(folderId: string): Promise<void> {
     await this.access.assertFolder(folderId);
+    const files = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      WITH RECURSIVE descendants AS (
+        SELECT "id" FROM "folders" WHERE "id" = ${folderId}::uuid
+        UNION ALL
+        SELECT child."id" FROM "folders" child
+        JOIN descendants ON child."parentId" = descendants."id"
+      )
+      SELECT files."id"
+      FROM "files" files
+      JOIN descendants ON files."folderId" = descendants."id"
+    `;
     await this.prisma.folder.delete({ where: { id: folderId } });
+    await this.cleanup.removeFiles(files.map((file) => file.id));
   }
 
   private toFolderDetailDto(folder: FolderRecord) {
