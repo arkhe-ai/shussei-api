@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { WsException } from '@nestjs/websockets';
 import { RedisService } from '../redis/redis.service';
 import { SessionUser } from '../common/types/session-user';
 import { randomUUID } from 'crypto';
+import { FilesService } from '../files/files.service';
 
 export type EphemeralMessage = {
   id: string;
@@ -9,24 +11,43 @@ export type EphemeralMessage = {
   author: SessionUser;
   body: string;
   sentAt: string;
+  attachments: FileAttachment[];
+};
+
+export type FileAttachment = {
+  id: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: string;
+  downloadUrl: string;
 };
 
 export type SendMessageInput = {
   channelId: string;
   body: string;
   author: SessionUser;
+  fileIds?: string[];
 };
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly redisService: RedisService) {}
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly filesService: FilesService,
+  ) {}
 
   async pushMessage(input: SendMessageInput): Promise<EphemeralMessage> {
+    const body = input.body.trim();
+    const fileIds = [...new Set(input.fileIds ?? [])];
+    if (!body && fileIds.length === 0) throw new WsException('message_content_required');
+    const attachments = await this.filesService.getAttachments(input.channelId, fileIds);
+
     const message: EphemeralMessage = {
       id: randomUUID(),
       channelId: input.channelId,
       author: input.author,
-      body: input.body,
+      body,
+      attachments,
       sentAt: new Date().toISOString(),
     };
 

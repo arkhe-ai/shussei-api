@@ -90,7 +90,7 @@ describe('PresenceGateway', () => {
     await gateway.sendChat(client, { channelId: 'text-1', body: 'hello' });
 
     expect(chat.pushMessage).toHaveBeenCalledWith({
-      channelId: 'text-1', body: 'hello', author: user,
+      channelId: 'text-1', body: 'hello', author: user, fileIds: undefined,
     });
   });
 

@@ -102,7 +102,10 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
   }
 
   @SubscribeMessage('chat.send')
-  async sendChat(@ConnectedSocket() client: Socket, @MessageBody() payload: { channelId: string; body: string }) {
+  async sendChat(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { channelId: string; body: string; fileIds?: string[] },
+  ) {
     const userId = client.data.userId as string | undefined;
     if (!userId) throw new WsException('authentication_required');
 
@@ -113,6 +116,7 @@ export class PresenceGateway implements OnGatewayConnection, OnGatewayDisconnect
       channelId: payload.channelId,
       body: payload.body,
       author: user,
+      fileIds: payload.fileIds,
     });
     this.server.emit('chat.message', message);
     return message;

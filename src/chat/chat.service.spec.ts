@@ -16,7 +16,10 @@ describe('ChatService', () => {
     getClient: jest.fn().mockReturnValue(redis),
   } as unknown as RedisService;
 
-  const service = new ChatService(redisService);
+  const filesService = {
+    getAttachments: jest.fn().mockResolvedValue([]),
+  } as any;
+  const service = new ChatService(redisService, filesService);
 
   it('pushes a message and trims to the latest 100 entries', async () => {
     const message = await service.pushMessage({
@@ -27,5 +30,6 @@ describe('ChatService', () => {
 
     expect(message.channelId).toBe('channel-1');
     expect(message.body).toBe('hello');
+    expect(message.attachments).toEqual([]);
   });
 });

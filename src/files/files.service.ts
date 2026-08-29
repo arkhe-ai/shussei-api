@@ -108,6 +108,17 @@ export class FilesService {
     return files.map((file) => this.toFileDto(file));
   }
 
+  async getAttachments(channelId: string, fileIds: string[]) {
+    if (fileIds.length === 0) return [];
+    await this.access.assertChannel(channelId);
+    const files = await this.prisma.storedFile.findMany({
+      where: { id: { in: fileIds }, channelId, status: 'ready' },
+    });
+    if (files.length !== fileIds.length) throw new NotFoundException('attachment_not_found');
+    const byId = new Map(files.map((file) => [file.id, file]));
+    return fileIds.map((fileId) => this.toFileDto(byId.get(fileId)!));
+  }
+
   async getFile(fileId: string) {
     const file = await this.prisma.storedFile.findUnique({ where: { id: fileId } });
     if (!file || file.status !== 'ready') throw new NotFoundException('file_not_found');
