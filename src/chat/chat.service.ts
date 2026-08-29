@@ -68,7 +68,21 @@ export class ChatService {
     const raw = await redis.lrange(`chat:channel:${channelId}`, 0, -1);
     return raw.map((entry) => {
       const message = JSON.parse(entry) as EphemeralMessage;
-      return { ...message, attachments: message.attachments ?? [] };
+      const attachments = Array.isArray(message.attachments)
+        ? message.attachments.filter(this.isValidAttachment)
+        : [];
+      return { ...message, attachments };
     });
+  }
+
+  private isValidAttachment(attachment: FileAttachment | null | undefined): attachment is FileAttachment {
+    return Boolean(
+      attachment &&
+        typeof attachment.id === 'string' &&
+        typeof attachment.originalName === 'string' &&
+        typeof attachment.mimeType === 'string' &&
+        typeof attachment.sizeBytes === 'number' &&
+        typeof attachment.downloadUrl === 'string',
+    );
   }
 }

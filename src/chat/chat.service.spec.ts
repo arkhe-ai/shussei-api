@@ -21,6 +21,16 @@ describe('ChatService', () => {
   } as any;
   const service = new ChatService(redisService, filesService);
 
+  it('filters malformed attachments when recovering messages', async () => {
+    redis.lrange.mockResolvedValue([
+      JSON.stringify({ id: 'message-1', channelId: 'channel-1', body: 'photo', attachments: [null, { id: 'file-1' }] }),
+    ]);
+
+    await expect(service.listRecent('channel-1')).resolves.toEqual([
+      expect.objectContaining({ attachments: [] }),
+    ]);
+  });
+
   it('pushes a message and trims to the latest 100 entries', async () => {
     const message = await service.pushMessage({
       channelId: 'channel-1',
