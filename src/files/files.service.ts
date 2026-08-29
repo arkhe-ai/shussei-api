@@ -2,9 +2,9 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException, 
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
+import { StorageService } from '../storage/storage.service';
 import { PrismaService } from '../database/prisma.service';
 import { FilesAccessService } from './files-access.service';
-import { StorageService } from '../storage/storage.service';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
 
@@ -96,6 +96,31 @@ export class FilesService {
       }
       throw error;
     }
+  }
+
+  async listFiles(channelId: string, folderId: string | null) {
+    await this.access.assertChannel(channelId);
+    if (folderId) await this.access.assertFolder(folderId, channelId);
+    const files = await this.prisma.storedFile.findMany({
+      where: { channelId, folderId, status: 'ready' },
+      orderBy: { createdAt: 'desc' },
+    });
+    return files.map((file) => this.toFileDto(file));
+  }
+
+  async getFile(fileId: string) {
+    const file = await this.prisma.storedFile.findUnique({ where: { id: fileId } });
+    if (!file || file.status !== 'ready') throw new NotFoundException('file_not_found');
+    return file;
+  }
+
+  openRead(fileId: string, options?: { start?: number; end?: number }): Readable {
+    return this.storage.openRead(fileId, options);
+  }
+
+  async deleteFile(fileId: string): Promise<void> {
+    await this.getFile(fileId);
+    await this.prisma.storedFile.delete({ where: { id: fileId } });
   }
 
   async getFolder(folderId: string) {
