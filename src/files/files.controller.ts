@@ -1,5 +1,6 @@
 import Busboy from 'busboy';
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -22,6 +23,7 @@ import { JwtSessionGuard } from '../auth/jwt-session.guard';
 import type { SessionUser } from '../common/types/session-user';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
+import { UpdateFileDto } from './dto/update-file.dto';
 import { FilesService } from './files.service';
 
 type AuthenticatedRequest = Request & { user?: SessionUser };
@@ -84,6 +86,11 @@ export class FilesController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     return this.setFileHeaders(fileId, request.headers.range, response);
+  }
+
+  @Patch('/files/:fileId')
+  updateFile(@Param('fileId') fileId: string, @Body() body: UpdateFileDto) {
+    return this.filesService.updateFile(fileId, body);
   }
 
   @Delete('/files/:fileId')
@@ -187,8 +194,8 @@ export class FilesController {
   }> {
     return new Promise((resolve, reject) => {
       const contentType = request.headers['content-type'];
-      if (!contentType) {
-        reject(new Error('multipart_content_type_required'));
+      if (!contentType || !contentType.startsWith('multipart/form-data')) {
+        reject(new BadRequestException('multipart_content_type_required'));
         return;
       }
 

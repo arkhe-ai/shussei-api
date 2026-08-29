@@ -11,14 +11,14 @@ export type EphemeralMessage = {
   author: SessionUser;
   body: string;
   sentAt: string;
-  attachments: FileAttachment[];
+  attachments?: FileAttachment[];
 };
 
 export type FileAttachment = {
   id: string;
   originalName: string;
   mimeType: string;
-  sizeBytes: string;
+  sizeBytes: number;
   downloadUrl: string;
 };
 
@@ -66,6 +66,9 @@ export class ChatService {
   async listRecent(channelId: string): Promise<EphemeralMessage[]> {
     const redis = this.redisService.getClient();
     const raw = await redis.lrange(`chat:channel:${channelId}`, 0, -1);
-    return raw.map((entry) => JSON.parse(entry));
+    return raw.map((entry) => {
+      const message = JSON.parse(entry) as EphemeralMessage;
+      return { ...message, attachments: message.attachments ?? [] };
+    });
   }
 }

@@ -96,6 +96,7 @@ model StoredFile {
   createdBy       User     @relation("FileCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
 
   @@index([channelId, folderId, createdAt])
+  @@index([channelId, folderId, originalName])
   @@index([createdByUserId])
   @@index([status])
   @@map("files")

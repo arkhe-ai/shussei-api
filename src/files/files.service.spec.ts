@@ -10,9 +10,11 @@ describe('FilesService', () => {
       create: jest.fn(),
       findUnique: jest.fn(),
       delete: jest.fn(),
+      update: jest.fn(),
     },
     storedFile: {
       findUnique: jest.fn(),
+      update: jest.fn(),
       delete: jest.fn(),
       deleteMany: jest.fn(),
     },
@@ -24,6 +26,19 @@ describe('FilesService', () => {
   const service = new FilesService(prisma, access, storage, cleanup);
 
   beforeEach(() => jest.clearAllMocks());
+
+  it('updates a file name and moves it within the same channel', async () => {
+    prisma.storedFile.findUnique.mockResolvedValue({ id: 'file-1', status: 'ready', channelId: 'channel-1' });
+    access.assertFolder.mockResolvedValue({ id: 'folder-1', channelId: 'channel-1' });
+    prisma.storedFile.update.mockResolvedValue({
+      id: 'file-1', originalName: 'renamed.png', mimeType: 'image/png', sizeBytes: 12n, createdAt: new Date(),
+    });
+
+    await expect(service.updateFile('file-1', { originalName: 'renamed.png', folderId: 'folder-1' })).resolves.toMatchObject({
+      originalName: 'renamed.png', sizeBytes: 12,
+    });
+    expect(prisma.storedFile.update).toHaveBeenCalled();
+  });
 
   it('deletes metadata and then the physical file', async () => {
     prisma.storedFile.findUnique.mockResolvedValue({ id: 'file-1', status: 'ready' });

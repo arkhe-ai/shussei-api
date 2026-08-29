@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, UnsupportedMediaTypeException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, PayloadTooLargeException, UnsupportedMediaTypeException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
@@ -8,6 +8,7 @@ import { PrismaService } from '../database/prisma.service';
 import { FilesAccessService } from './files-access.service';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
+import { UpdateFileDto } from './dto/update-file.dto';
 
 type FolderRecord = Prisma.FolderGetPayload<{
   include: { children: true; files: true };
@@ -94,7 +95,7 @@ export class FilesService {
       await this.storage.remove(fileId);
       await this.prisma.storedFile.deleteMany({ where: { id: fileId } });
       if (error instanceof Error && error.message === 'file_size_limit_exceeded') {
-        throw new BadRequestException('file_size_limit_exceeded');
+        throw new PayloadTooLargeException('file_size_limit_exceeded');
       }
       throw error;
     }
@@ -129,6 +130,26 @@ export class FilesService {
 
   openRead(fileId: string, options?: { start?: number; end?: number }): Readable {
     return this.storage.openRead(fileId, options);
+  }
+
+  async updateFile(fileId: string, input: UpdateFileDto) {
+    const file = await this.getFile(fileId);
+    if (input.folderId !== undefined && input.folderId !== null) {
+      await this.access.assertFolder(input.folderId, file.channelId);
+    }
+
+    try {
+      const updated = await this.prisma.storedFile.update({
+        where: { id: fileId },
+        data: {
+          ...(input.originalName === undefined ? {} : { originalName: input.originalName.trim() }),
+          ...(input.folderId === undefined ? {} : { folderId: input.folderId }),
+        },
+      });
+      return this.toFileDto(updated);
+    } catch (error) {
+      this.throwConflict(error, 'file_name_already_exists');
+    }
   }
 
   async deleteFile(fileId: string): Promise<void> {
@@ -238,15 +259,15 @@ export class FilesService {
       id: file.id,
       originalName: file.originalName,
       mimeType: file.mimeType,
-      sizeBytes: file.sizeBytes.toString(),
+      sizeBytes: Number(file.sizeBytes),
       createdAt: file.createdAt,
       downloadUrl: `/api/v1/files/${file.id}`,
     };
   }
 
-  private throwConflict(error: unknown): never {
+  private throwConflict(error: unknown, message = 'folder_name_already_exists'): never {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      throw new ConflictException('folder_name_already_exists');
+      throw new ConflictException(message);
     }
     throw error;
   }

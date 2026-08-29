@@ -11,6 +11,7 @@ describe('FilesController', () => {
     updateFolder: jest.fn(),
     deleteFolder: jest.fn(),
     uploadFile: jest.fn(),
+    updateFile: jest.fn(),
     getFile: jest.fn(),
     openRead: jest.fn(),
     deleteFile: jest.fn(),
