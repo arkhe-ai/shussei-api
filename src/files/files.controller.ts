@@ -1,3 +1,4 @@
+import Busboy from 'busboy';
 import {
   Body,
   Controller,
@@ -41,6 +42,22 @@ export class FilesController {
     return this.filesService.createFolder(channelId, request.user!.id, body);
   }
 
+  @Post('/channels/:channelId/files')
+  @HttpCode(HttpStatus.CREATED)
+  uploadFile(
+    @Param('channelId') channelId: string,
+    @Req() request: AuthenticatedRequest,
+    @Query('folderId') folderId?: string,
+  ) {
+    return this.parseUpload(request).then(({ stream, originalName, mimeType }) =>
+      this.filesService.uploadFile(channelId, request.user!.id, this.parseNullableId(folderId), {
+        stream,
+        originalName,
+        mimeType,
+      }),
+    );
+  }
+
   @Get('/folders/:folderId')
   getFolder(@Param('folderId') folderId: string) {
     return this.filesService.getFolder(folderId);
@@ -64,5 +81,44 @@ export class FilesController {
 
   private parseNullableId(value?: string): string | null {
     return !value || value === 'null' ? null : value;
+  }
+
+  private parseUpload(request: AuthenticatedRequest): Promise<{
+    stream: import('node:stream').Readable;
+    originalName: string;
+    mimeType: string;
+  }> {
+    return new Promise((resolve, reject) => {
+      const contentType = request.headers['content-type'];
+      if (!contentType) {
+        reject(new Error('multipart_content_type_required'));
+        return;
+      }
+
+      const parser = Busboy({
+        headers: { 'content-type': contentType },
+        limits: { files: 1, fields: 0 },
+      });
+      let settled = false;
+
+      parser.on('file', (_fieldName, stream, info) => {
+        if (settled) {
+          stream.resume();
+          return;
+        }
+        settled = true;
+        resolve({
+          stream,
+          originalName: info.filename,
+          mimeType: info.mimeType,
+        });
+      });
+      parser.on('filesLimit', () => reject(new Error('only_one_file_allowed')));
+      parser.on('error', reject);
+      parser.on('finish', () => {
+        if (!settled) reject(new Error('file_required'));
+      });
+      request.pipe(parser);
+    });
   }
 }

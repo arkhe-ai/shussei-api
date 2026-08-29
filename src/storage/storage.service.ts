@@ -19,6 +19,7 @@ export class StorageService {
   async writeTemp(
     input: Readable,
     fileId: string,
+    maxBytes = Number(process.env.MAX_FILE_SIZE_BYTES ?? 52_428_800),
   ): Promise<{ tempPath: string; sizeBytes: bigint; checksum: string }> {
     const tempPath = this.paths.tempPath(fileId);
     await mkdir(join(this.paths.root(), '.tmp'), { recursive: true });
@@ -28,6 +29,10 @@ export class StorageService {
     const counter = new Transform({
       transform(chunk: Buffer, _encoding, callback) {
         sizeBytes += BigInt(chunk.length);
+        if (sizeBytes > BigInt(maxBytes)) {
+          callback(new Error('file_size_limit_exceeded'));
+          return;
+        }
         hash.update(chunk);
         callback(null, chunk);
       },

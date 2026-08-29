@@ -1,7 +1,10 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UnsupportedMediaTypeException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
 import { PrismaService } from '../database/prisma.service';
 import { FilesAccessService } from './files-access.service';
+import { StorageService } from '../storage/storage.service';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
 
@@ -14,6 +17,7 @@ export class FilesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: FilesAccessService,
+    private readonly storage: StorageService,
   ) {}
 
   async listContents(channelId: string, parentId: string | null) {
@@ -49,6 +53,48 @@ export class FilesService {
       });
     } catch (error) {
       this.throwConflict(error);
+    }
+  }
+
+  async uploadFile(
+    channelId: string,
+    userId: string,
+    folderId: string | null,
+    input: { stream: Readable; originalName: string; mimeType: string },
+  ) {
+    await this.access.assertChannel(channelId);
+    if (folderId) await this.access.assertFolder(folderId, channelId);
+    this.assertMimeType(input.mimeType);
+
+    const fileId = randomUUID();
+    const pending = await this.prisma.storedFile.create({
+      data: {
+        id: fileId,
+        channelId,
+        folderId,
+        createdByUserId: userId,
+        originalName: input.originalName.trim() || 'unnamed-file',
+        mimeType: input.mimeType,
+        sizeBytes: 0n,
+        status: 'pending',
+      },
+    });
+
+    try {
+      const stored = await this.storage.writeTemp(input.stream, fileId);
+      await this.storage.promote(stored.tempPath, fileId);
+      const file = await this.prisma.storedFile.update({
+        where: { id: pending.id },
+        data: { sizeBytes: stored.sizeBytes, checksum: stored.checksum, status: 'ready' },
+      });
+      return this.toFileDto(file);
+    } catch (error) {
+      await this.storage.remove(fileId);
+      await this.prisma.storedFile.deleteMany({ where: { id: fileId } });
+      if (error instanceof Error && error.message === 'file_size_limit_exceeded') {
+        throw new BadRequestException('file_size_limit_exceeded');
+      }
+      throw error;
     }
   }
 
@@ -124,6 +170,16 @@ export class FilesService {
       folders: folder.children,
       files: folder.files.map((file) => this.toFileDto(file)),
     };
+  }
+
+  private assertMimeType(mimeType: string): void {
+    const allowed = new Set(
+      (process.env.ALLOWED_FILE_MIME_TYPES ?? 'image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean),
+    );
+    if (!allowed.has(mimeType)) throw new UnsupportedMediaTypeException('file_mime_type_not_allowed');
   }
 
   private toFileDto(file: { id: string; originalName: string; mimeType: string; sizeBytes: bigint; createdAt: Date }) {
