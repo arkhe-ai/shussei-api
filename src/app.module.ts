@@ -10,9 +10,10 @@ import { RtcModule } from './rtc/rtc.module';
 import { UsersController } from './users.controller';
 import { AllowlistModule } from './allowlist/allowlist.module';
 import { StorageModule } from './storage/storage.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
-  imports: [DatabaseModule, RedisModule, AuthModule, ChannelsModule, ChatModule, PresenceModule, RtcModule, AllowlistModule, StorageModule],
+  imports: [DatabaseModule, RedisModule, AuthModule, ChannelsModule, ChatModule, PresenceModule, RtcModule, AllowlistModule, StorageModule, FilesModule],
   controllers: [HealthController, UsersController],
 })
 export class AppModule {}
