@@ -45,7 +45,7 @@ export class FilesController {
     @Req() request: AuthenticatedRequest,
     @Body() body: CreateFolderDto,
   ) {
-    return this.filesService.createFolder(channelId, request.user!.id, body);
+    return this.filesService.createFolder(channelId, request.user!.id, body).then((folder) => ({ folder }));
   }
 
   @Get('/channels/:channelId/files')
@@ -61,11 +61,13 @@ export class FilesController {
     @Query('folderId') folderId?: string,
   ) {
     return this.parseUpload(request).then(({ stream, originalName, mimeType }) =>
-      this.filesService.uploadFile(channelId, request.user!.id, this.parseNullableId(folderId), {
-        stream,
-        originalName,
-        mimeType,
-      }),
+      this.filesService
+        .uploadFile(channelId, request.user!.id, this.parseNullableId(folderId), {
+          stream,
+          originalName,
+          mimeType,
+        })
+        .then((file) => ({ file })),
     );
   }
 
@@ -90,7 +92,7 @@ export class FilesController {
 
   @Patch('/files/:fileId')
   updateFile(@Param('fileId') fileId: string, @Body() body: UpdateFileDto) {
-    return this.filesService.updateFile(fileId, body);
+    return this.filesService.updateFile(fileId, body).then((file) => ({ file }));
   }
 
   @Delete('/files/:fileId')
@@ -111,7 +113,7 @@ export class FilesController {
 
   @Patch('/folders/:folderId')
   updateFolder(@Param('folderId') folderId: string, @Body() body: UpdateFolderDto) {
-    return this.filesService.updateFolder(folderId, body);
+    return this.filesService.updateFolder(folderId, body).then((folder) => ({ folder }));
   }
 
   @Delete('/folders/:folderId')
