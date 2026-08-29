@@ -237,10 +237,11 @@ export class FilesService {
   }
 
   private toFolderDetailDto(folder: FolderRecord) {
+    const { children, files, ...folderDto } = folder;
     return {
-      folder: folder,
-      folders: folder.children,
-      files: folder.files.map((file) => this.toFileDto(file)),
+      folder: folderDto,
+      folders: children,
+      files: files.map((file) => this.toFileDto(file)),
     };
   }
 

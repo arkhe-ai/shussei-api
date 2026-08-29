@@ -27,6 +27,20 @@ describe('FilesService', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
+  it('does not expose BigInt metadata in the folder detail envelope', async () => {
+    prisma.folder.findUnique.mockResolvedValue({
+      id: 'folder-1', channelId: 'channel-1', parentId: null, name: 'Fotos', createdByUserId: 'user-1',
+      createdAt: new Date(), updatedAt: new Date(), children: [],
+      files: [{ id: 'file-1', originalName: 'foto.png', mimeType: 'image/png', sizeBytes: 12n, createdAt: new Date() }],
+    });
+
+    const result = await service.getFolder('folder-1');
+
+    expect(result.files[0].sizeBytes).toBe(12);
+    expect(() => JSON.stringify(result)).not.toThrow();
+    expect(result.folder).not.toHaveProperty('files');
+  });
+
   it('updates a file name and moves it within the same channel', async () => {
     prisma.storedFile.findUnique.mockResolvedValue({ id: 'file-1', status: 'ready', channelId: 'channel-1' });
     access.assertFolder.mockResolvedValue({ id: 'folder-1', channelId: 'channel-1' });
