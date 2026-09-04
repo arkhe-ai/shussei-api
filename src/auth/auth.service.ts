@@ -91,10 +91,53 @@ export class AuthService {
     );
   }
 
+  /**
+   * Marks the short-lived code a desktop sign-in ends with.
+   *
+   * Both it and a session token are signed with the same secret, so without
+   * something to tell them apart the code handed to the loopback address would
+   * verify as a session and could simply be presented as one. The audience is
+   * that separation: session tokens carry none and are rejected here, the code
+   * carries this one and is rejected everywhere else.
+   */
+  private static readonly DESKTOP_EXCHANGE_AUDIENCE = 'shussei:desktop-exchange';
+
+  /**
+   * Handed to the desktop app over loopback in place of a session.
+   *
+   * Two minutes is the whole life of it: long enough to survive the redirect
+   * chain out of Google, short enough that a copy left behind in browser
+   * history or a proxy log is already spent by the time anyone reads it.
+   */
+  createDesktopExchangeCode(user: SessionUser): string {
+    return jwt.sign(
+      { sub: user.id, aud: AuthService.DESKTOP_EXCHANGE_AUDIENCE },
+      process.env.SESSION_SECRET ?? 'change-me-session',
+      { expiresIn: '2m' },
+    );
+  }
+
+  async getUserFromDesktopExchangeCode(code?: string): Promise<SessionUser | null> {
+    if (!code) return null;
+    try {
+      const payload = jwt.verify(code, process.env.SESSION_SECRET ?? 'change-me-session', {
+        audience: AuthService.DESKTOP_EXCHANGE_AUDIENCE,
+      }) as { sub?: string };
+      return payload?.sub ? this.getUserById(payload.sub) : null;
+    } catch {
+      return null;
+    }
+  }
+
   async getSessionUserFromToken(token?: string): Promise<SessionUser | null> {
     if (!token) return null;
     try {
-      const payload = jwt.verify(token, process.env.SESSION_SECRET ?? 'change-me-session') as { sub?: string };
+      const payload = jwt.verify(token, process.env.SESSION_SECRET ?? 'change-me-session') as {
+        sub?: string;
+        aud?: string;
+      };
+      // An exchange code is not a session, however well it verifies.
+      if (payload?.aud === AuthService.DESKTOP_EXCHANGE_AUDIENCE) return null;
       return payload?.sub ? this.getUserById(payload.sub) : null;
     } catch {
       return null;
